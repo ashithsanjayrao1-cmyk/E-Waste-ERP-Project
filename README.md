@@ -24,5 +24,5 @@ Traditional e-waste recycling facilities rely on fragmented, manual systems that
 
 **1. Clone the repository**
 ```bash
-git clone [https://github.com/yourusername/ewaste-master-erp.git](https://github.com/yourusername/ewaste-master-erp.git)
-cd ewaste_erp
+git clone [git clone https://github.com/ashithsanjayrao1-cmyk/E-Waste-ERP-Project.git](git clone https://github.com/ashithsanjayrao1-cmyk/E-Waste-ERP-Project.git)
+cd E-Waste-ERP-Project
