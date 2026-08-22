@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Waste ERP | Sustainable Logistics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            slate: '#243242',
+                            green: '#28a745',
+                            blue: '#1d6fdc',
+                            muted: '#72849a'
+                        }
+                    },
+                    boxShadow: {
+                        'glass-sm': '0 2px 10px 0 rgba(31, 38, 135, 0.05)',
+                        'glass-md': '0 8px 32px 0 rgba(31, 38, 135, 0.08)',
+                        'glass-lg': '0 20px 50px 0 rgba(31, 38, 135, 0.15)',
+                        'glow-green': '0 0 20px rgba(40, 167, 69, 0.4)',
+                        'glow-red': '0 0 20px rgba(239, 68, 68, 0.4)'
+                    }
+                }
+            }
+            
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght=300;400;500;600;700;800&display=swap');
+        body { 
+            font-family: 'Plus Jakarta Sans', sans-serif; 
+            background: radial-gradient(circle at 0% 0%, #f4f7fa 0%, #eef2f7 50%, #e2e8f0 100%);
+            background-attachment: fixed;
+        }
+        
+        .glass-panel { 
+            background: rgba(255, 255, 255, 0.45); 
+            backdrop-filter: blur(20px); 
+            -webkit-backdrop-filter: blur(20px); 
+            border: 1px solid rgba(255, 255, 255, 0.6); 
+        }
+        .glass-card { 
+            background: rgba(255, 255, 255, 0.65); 
+            backdrop-filter: blur(16px); 
+            -webkit-backdrop-filter: blur(16px); 
+            border: 1px solid rgba(255, 255, 255, 0.7); 
+        }
+        .glass-input {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(226, 232, 240, 0.9);
+            transition: all 0.3s ease;
+        }
+        .glass-input:focus {
+            background: rgba(255, 255, 255, 1);
+            border-color: #28a745;
+            box-shadow: 0 0 0 4px rgba(40, 167, 69, 0.15);
+        }
+
+        .view-section { display: none; animation: fadeSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; transform: translateY(12px); }
+        .view-section.active { display: block; }
+        @keyframes fadeSlideUp { to { opacity: 1; transform: translateY(0); } }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .sidebar-link.active { 
+            background: linear-gradient(to right, rgba(40, 167, 69, 0.08), rgba(40, 167, 69, 0.01)); 
+            color: #28a745; 
+            font-weight: 700; 
+            border-left: 4px solid #28a745; 
+        }
+
+        @keyframes toastSlideIn {
+            0% { transform: translateX(120%) scale(0.9); opacity: 0; }
+            70% { transform: translateX(-5%); scale(1.02); opacity: 1; }
+            100% { transform: translateX(0); scale(1); opacity: 1; }
+        }
+        @keyframes toastSlideOut {
+            0% { transform: translateX(0); scale(1); opacity: 1; }
+            100% { transform: translateX(120%) scale(0.9); opacity: 0; }
+        }
+        @keyframes toastProgress {
+            0% { width: 100%; }
+            100% { width: 0%; }
+        }
+        .toast-animate-in { animation: toastSlideIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        .toast-animate-out { animation: toastSlideOut 0.4s ease-in forwards; }
+    </style>
+</head>
+<body class="text-slate-800 h-screen flex overflow-hidden antialiased">
+
+    <div id="toast-container" class="fixed top-6 right-6 z-50 flex flex-col gap-4 pointer-events-none w-96"></div>
+
+    <script>
+        const renderPerfectLogo = (scale = 'normal', centered = false) => {
+            const isSmall = scale === 'small';
+            return `
+                <div class="flex items-center ${isSmall ? 'gap-3' : 'gap-4'} select-none ${centered ? 'justify-center text-center' : 'text-left'}">
+                    <svg class="${isSmall ? 'h-10 w-10' : 'h-14 w-14'}" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <polygon points="60,8 110,37 110,93 60,112 10,93 10,37" stroke="#28a745" stroke-width="9" stroke-linejoin="round" fill="none"/>
+                        <path d="M60,60 L35,42 M60,60 L85,42 M60,60 L60,92" stroke="#1d6fdc" stroke-width="7" stroke-linecap="round"/>
+                        <circle cx="35" cy="42" r="7" fill="#243242" />
+                        <circle cx="85" cy="42" r="7" fill="#243242" />
+                        <circle cx="60" cy="92" r="7" fill="#243242" />
+                    </svg>
+                    <div class="${centered ? 'text-left' : ''}">
+                        <div class="${isSmall ? 'text-lg' : 'text-2xl'} font-extrabold tracking-tight leading-none text-[#243242]">
+                            E-WASTE <span class="text-[#28a745]">ERP</span>
+                        </div>
+                        <div class="${isSmall ? 'text-[8px]' : 'text-[10px]'} font-bold tracking-[0.22em] text-[#72849a] uppercase mt-1 leading-none">
+                            SUSTAINABLE LOGISTICS
+                        </div>
+                    </div>
+                </div>`;
+        }
+    </script>
+
+    <div id="authContainer" class="w-full h-full flex items-center justify-center absolute bg-gradient-to-br from-[#f8fafc] via-[#eff6ff] to-[#f0fdf4] z-40 px-4">
+        
+        <div id="portalSelector" class="glass-panel p-10 rounded-[2rem] shadow-glass-lg max-w-lg w-full text-center transition-all duration-300">
+            <div class="mb-10 flex justify-center items-center" id="logo-target-selector">
+                <script>document.getElementById('logo-target-selector').innerHTML = renderPerfectLogo('normal', true);</script>
+            </div>
+            <h2 class="text-3xl font-extrabold text-[#243242] mb-2 tracking-tight">Welcome Back</h2>
+            <p class="text-slate-500 text-base mb-10 font-medium">Please select your portal to continue.</p>
+            
+            <button onclick="showForm('staffForm')" class="w-full mb-4 bg-[#28a745] hover:bg-[#218838] text-white font-bold py-4 px-6 rounded-2xl transition-all duration-300 shadow-md transform hover:-translate-y-1 active:scale-95 flex justify-center items-center gap-3 text-lg">
+                🏢 Enter Staff Portal
+            </button>
+            <button onclick="showForm('buyerForm')" class="w-full bg-white/90 hover:bg-white text-[#243242] border border-slate-200 shadow-sm font-bold py-4 px-6 rounded-2xl transition-all duration-300 transform hover:-translate-y-1 active:scale-95 flex justify-center items-center gap-3 text-lg">
+                ♻️ Enter Buyer Marketplace
+            </button>
+        </div>
+
+        <div id="staffLoginForm" class="hidden glass-panel p-12 rounded-[2rem] shadow-glass-lg max-w-xl w-full relative overflow-hidden">
+            <div class="absolute -top-20 -right-20 w-64 h-64 bg-green-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 pointer-events-none"></div>
+
+            <button onclick="showForm('selector')" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-white hover:bg-slate-50 text-slate-600 font-extrabold text-xs uppercase tracking-wider transition-all shadow-sm border border-slate-200 mb-8 relative z-10 transform hover:-translate-y-0.5 active:scale-95">&larr; Back to hub</button>
+            
+            <div class="mb-8 flex items-center relative z-10" id="logo-target-staff">
+                <script>document.getElementById('logo-target-staff').innerHTML = renderPerfectLogo('normal');</script>
+            </div>
+            
+            <div class="relative z-10 mb-8">
+                <h2 class="text-3xl font-extrabold text-[#243242] mb-2 tracking-tight">Welcome to Staff Portal</h2>
+                <p class="text-sm font-medium text-slate-500">Log in to manage operations, warehouse inventory, processing jobs, and logistics.</p>
+            </div>
+
+            <form id="internalLoginForm" class="space-y-6 relative z-10">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Username</label>
+                    <input type="text" id="internal_username" placeholder="Enter your staff username" required class="w-full px-5 py-4 glass-input rounded-2xl text-slate-800 outline-none font-medium">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Password</label>
+                    <input type="password" id="internal_password" placeholder="••••••••" required class="w-full px-5 py-4 glass-input rounded-2xl text-slate-800 outline-none font-medium">
+                </div>
+                <button type="submit" class="w-full bg-[#28a745] hover:bg-[#218838] text-white font-bold py-4 rounded-2xl transition-all duration-300 shadow-md transform hover:-translate-y-1 active:scale-95 text-lg mt-2">Sign In as Staff</button>
+            </form>
+        </div>
+
+        <div id="buyerLoginForm" class="hidden glass-panel p-12 rounded-[2rem] shadow-glass-lg max-w-xl w-full relative overflow-hidden">
+            <div class="absolute -top-20 -right-20 w-64 h-64 bg-blue-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 pointer-events-none"></div>
+
+            <button onclick="showForm('selector')" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-white hover:bg-slate-50 text-slate-600 font-extrabold text-xs uppercase tracking-wider transition-all shadow-sm border border-slate-200 mb-8 relative z-10 transform hover:-translate-y-0.5 active:scale-95">&larr; Back to hub</button>
+            
+            <div class="mb-8 flex items-center relative z-10" id="logo-target-buyer">
+                <script>document.getElementById('logo-target-buyer').innerHTML = renderPerfectLogo('normal');</script>
+            </div>
+            
+            <div class="relative z-10 mb-8">
+                <h2 class="text-3xl font-extrabold text-[#243242] mb-2 tracking-tight">Welcome, Buyer!</h2>
+                <p class="text-sm font-medium text-slate-500">Access the premium marketplace to purchase recycled materials and track your orders.</p>
+            </div>
+
+            <form id="externalLoginForm" class="space-y-6 relative z-10">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Email Address</label>
+                    <input type="text" id="buyer_username" placeholder="name@company.com" required class="w-full px-5 py-4 glass-input rounded-2xl text-slate-800 outline-none font-medium">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Password</label>
+                    <input type="password" id="buyer_password" placeholder="••••••••" required class="w-full px-5 py-4 glass-input rounded-2xl text-slate-800 outline-none font-medium">
+                </div>
+                <button type="submit" class="w-full bg-[#1d6fdc] hover:bg-[#1557b0] text-white font-bold py-4 rounded-2xl transition-all duration-300 shadow-md transform hover:-translate-y-1 active:scale-95 text-lg mt-2">Access Marketplace</button>
+            </form>
+            <div class="mt-8 text-center text-sm text-slate-500 font-medium relative z-10">
+                New buyer? <a href="#" onclick="showForm('registerForm')" class="text-[#1d6fdc] font-bold hover:underline">Register your company here</a>
+            </div>
+        </div>
+
+        <div id="buyerRegisterForm" class="hidden glass-panel p-10 rounded-[2rem] shadow-glass-lg max-w-2xl w-full">
+            <button onclick="showForm('buyerForm')" class="inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-full bg-white hover:bg-slate-50 text-slate-600 font-extrabold text-xs uppercase tracking-wider transition-all shadow-sm border border-slate-200 mb-6 relative z-10 transform hover:-translate-y-0.5 active:scale-95">&larr; Back to Login</button>
+            <h2 class="text-3xl font-extrabold text-[#243242] mb-2 tracking-tight">Register as a Buyer</h2>
+            <p class="text-sm font-medium text-slate-500 mb-8">Fill in your corporate details to join the sustainable marketplace.</p>
+            <form id="publicBuyerForm" class="space-y-5">
+                <div class="grid grid-cols-2 gap-5">
+                    <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Username</label><input type="text" id="reg_username" required class="w-full px-4 py-3.5 glass-input rounded-2xl text-slate-800 text-sm outline-none font-medium"></div>
+                    <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Password</label><input type="password" id="reg_password" required class="w-full px-4 py-3.5 glass-input rounded-2xl text-slate-800 text-sm outline-none font-medium"></div>
+                </div>
+                <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Company Name</label><input type="text" id="reg_company" required class="w-full px-4 py-3.5 glass-input rounded-2xl text-slate-800 text-sm outline-none font-medium"></div>
+                <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">GSTIN / Tax ID</label><input type="text" id="reg_license" required class="w-full px-4 py-3.5 glass-input rounded-2xl text-slate-800 text-sm outline-none font-medium"></div>
+                <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Email Address</label><input type="email" id="reg_email" required class="w-full px-4 py-3.5 glass-input rounded-2xl text-slate-800 text-sm outline-none font-medium"></div>
+                <button type="submit" class="w-full mt-4 bg-[#1d6fdc] hover:bg-[#1557b0] text-white font-bold py-4 rounded-2xl transition-all duration-300 shadow-md transform hover:-translate-y-1 active:scale-95 text-lg">Create Account</button>
+            </form>
+        </div>
+    </div>
+
+    <div id="appContainer" class="hidden w-full h-full flex">
+        
+        <div class="w-72 glass-panel border-r border-slate-200/50 flex flex-col shadow-glass-sm z-10 flex-shrink-0 relative">
+            <div class="p-6 border-b border-slate-200/50 flex items-center justify-center min-h-[88px]" id="logo-target-sidebar">
+                <script>document.getElementById('logo-target-sidebar').innerHTML = renderPerfectLogo('small');</script>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto py-6 space-y-8">
+                <div id="admin-menu" class="sidebar-menu hidden space-y-1 px-4">
+                    <p class="px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Main</p>
+                    <a href="#" onclick="switchTab('overview')" class="sidebar-link active flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:bg-white/50 transition-all duration-300 text-sm font-medium mb-1">📊 Dashboard Overview</a>
+                    
+                    <p class="px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest mt-6 mb-3">Logistics & Operations</p>
+                    <a href="#" onclick="switchTab('pickups')" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:bg-white/50 transition-all duration-300 text-sm font-medium mb-1">🚚 Pickups & Arrivals</a>
+                    <a href="#" onclick="switchTab('warehouse')" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:bg-white/50 transition-all duration-300 text-sm font-medium mb-1">📦 Warehouse Inventory</a>
+                    <a href="#" onclick="switchTab('jobs')" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:bg-white/50 transition-all duration-300 text-sm font-medium mb-1">⚙️ Production Jobs</a>
+                    <a href="#" onclick="switchTab('sales')" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:bg-white/50 transition-all duration-300 text-sm font-medium mb-1">💰 Sales & Disposal</a>
+                    
+                    <p class="px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest mt-6 mb-3">Management</p>
+                    <a href="#" onclick="switchTab('clients')" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:bg-white/50 transition-all duration-300 text-sm font-medium mb-1">🏢 Clients</a>
+                    <a href="#" onclick="switchTab('staff')" class="sidebar-link flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:bg-white/50 transition-all duration-300 text-sm font-medium mb-1">👥 Staff Directory</a>
+                </div>
+
+                <div id="worker-menu" class="sidebar-menu hidden space-y-1 px-4">
+                    <p class="px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Worker Menu</p>
+                    <a href="#" onclick="switchTab('worker-app')" class="sidebar-link active flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:bg-white/50 transition-all duration-300 text-sm font-medium">🛠️ My Jobs</a>
+                </div>
+
+                <div id="driver-menu" class="sidebar-menu hidden space-y-1 px-4">
+                    <p class="px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Driver Menu</p>
+                    <a href="#" onclick="switchTab('driver-app')" class="sidebar-link active flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:bg-white/50 transition-all duration-300 text-sm font-medium">🚛 My Routes</a>
+                </div>
+
+                <div id="buyer-menu" class="sidebar-menu hidden space-y-1 px-4">
+                    <p class="px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Buyer Menu</p>
+                    <a href="#" onclick="switchTab('buyer-app')" class="sidebar-link active flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-600 hover:bg-white/50 transition-all duration-300 text-sm font-medium">🛒 Marketplace</a>
+                </div>
+            </div>
+
+            <div class="p-6 border-t border-slate-200/50 bg-white/30 backdrop-blur-sm">
+                <div class="text-xs font-extrabold text-[#243242] mb-1" id="currentUserDisplay">User: Loading</div>
+                <div class="text-[10px] uppercase font-bold text-[#28a745] tracking-wider mb-4 flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-[#28a745] animate-pulse"></span> Online</div>
+                <button onclick="logout()" class="w-full bg-slate-200 hover:bg-slate-300/80 text-slate-700 font-bold py-2.5 rounded-xl text-xs transition-all duration-300 shadow-sm">Logout</button>
+            </div>
+        </div>
+
+        <div class="flex-1 flex flex-col h-full overflow-hidden relative">
+            
+            <header class="glass-panel h-20 border-b border-slate-200/50 flex items-center px-10 shadow-glass-sm z-10 justify-between">
+                <h2 class="text-xl font-extrabold text-[#243242] tracking-tight" id="topbarTitle">Dashboard</h2>
+                <div class="flex items-center gap-4">
+                    <div class="bg-white/80 px-4 py-2 rounded-2xl shadow-glass-sm border border-slate-200/40 text-sm font-bold text-slate-600">
+                        Date: <span class="text-[#28a745]" id="dateDisplay">Loading...</span>
+                    </div>
+                </div>
+            </header>
+
+            <div class="flex-1 overflow-y-auto p-10 max-w-[1600px] w-full mx-auto space-y-8 scroll-smooth pb-24">
+                
+                <div id="welcomeSection" class="hidden animate-fadeSlideUp mb-8 flex items-center gap-8 glass-panel p-8 rounded-3xl shadow-glass-sm border border-slate-200/50 bg-gradient-to-r from-white/60 to-transparent">
+                    <div class="flex-shrink-0 bg-white/80 p-4 rounded-2xl shadow-sm border border-slate-100" id="welcome-logo-target">
+                        <script>document.getElementById('welcome-logo-target').innerHTML = renderPerfectLogo('normal');</script>
+                    </div>
+                    <div>
+                        <h1 class="text-3xl font-extrabold text-[#243242] mb-2 tracking-tight">Welcome back, <span id="welcomeName" class="text-[#28a745]"></span>! 👋</h1>
+                        <p class="text-slate-500 font-medium text-lg" id="welcomeSubtitle">Here is your portal overview for today.</p>
+                    </div>
+                </div>
+                
+                <div id="view-overview" class="view-section active space-y-10">
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                        <div class="glass-card rounded-3xl shadow-glass-md p-8 border border-white relative overflow-hidden group transform hover:-translate-y-0.5 transition-all duration-300">
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Total Inbound Weight</span>
+                            <h3 class="text-4xl font-extrabold mt-3 font-mono text-[#243242]" id="totalWeightMetric">0.00 kg</h3>
+                        </div>
+                        <div class="bg-gradient-to-br from-[#ecfdf5] to-[#d1fae5] rounded-3xl shadow-glass-md p-8 border border-emerald-200/50 relative overflow-hidden group transform hover:-translate-y-0.5 transition-all duration-300">
+                            <span class="text-xs font-bold text-emerald-700 uppercase tracking-wider block">Total Revenue</span>
+                            <h3 class="text-4xl font-extrabold mt-3 font-mono text-[#28a745]" id="totalRevenueMetric">₹0</h3>
+                        </div>
+                        <div class="glass-card rounded-3xl shadow-glass-md p-8 border border-white relative overflow-hidden group transform hover:-translate-y-0.5 transition-all duration-300">
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Completed Jobs</span>
+                            <h3 class="text-4xl font-extrabold text-[#243242] mt-3 font-mono" id="totalJobsMetric">0</h3>
+                        </div>
+                        <div class="glass-card rounded-3xl shadow-glass-md p-8 border border-white relative overflow-hidden group transform hover:-translate-y-0.5 transition-all duration-300">
+                            <span class="text-xs font-bold text-slate-400 uppercase tracking-wider block">Pending Buyer Orders</span>
+                            <h3 class="text-4xl font-extrabold text-[#243242] mt-3 font-mono" id="totalBuyersMetric">0</h3>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel p-8 rounded-3xl shadow-glass-md">
+                        <h3 class="text-lg font-extrabold text-[#243242] mb-6 flex items-center gap-2"><span class="text-[#28a745]">●</span> Live Inventory</h3>
+                        <div id="adminMaterialStock" class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-6"></div>
+                    </div>
+
+                    <div class="glass-panel rounded-3xl shadow-glass-md overflow-hidden">
+                        <div class="px-8 py-6 border-b border-slate-200/50 bg-white/40"><h3 class="text-lg font-extrabold text-[#243242]">Recent Extractions</h3></div>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full text-left">
+                                <thead class="bg-slate-50 text-[11px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200/60"><tr><th class="px-8 py-5">ID</th><th class="px-8 py-5">Worker</th><th class="px-8 py-5">Batch</th><th class="px-8 py-5">Material Extracted</th><th class="px-8 py-5">Weight Extracted</th></tr></thead>
+                                <tbody class="divide-y divide-slate-100 text-sm font-medium text-slate-600 bg-white/40" id="adminExtractionsTable"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-staff" class="view-section space-y-8">
+                    <div class="glass-panel rounded-3xl shadow-glass-md overflow-hidden">
+                        <div class="px-8 py-6 border-b border-slate-200/50 bg-white/40"><h3 class="text-lg font-extrabold text-[#243242]">Add New Staff</h3></div>
+                        <form id="staffForm" class="p-8 space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Username</label><input type="text" id="staff_username" required class="w-full px-5 py-3.5 glass-input rounded-2xl text-slate-800 outline-none"></div>
+                                <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Password</label><input type="password" id="staff_password" required class="w-full px-5 py-3.5 glass-input rounded-2xl text-slate-800 outline-none"></div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Role</label>
+                                <select id="staff_role" class="w-full px-5 py-3.5 glass-input bg-white text-slate-800 rounded-2xl outline-none">
+                                    <option value="worker">Worker (Warehouse/Factory)</option>
+                                    <option value="driver">Driver (Logistics/Pickup)</option>
+                                </select>
+                            </div>
+                            <div class="pt-4"><button type="submit" class="w-full bg-[#28a745] hover:bg-[#218838] text-white font-bold py-4 rounded-2xl shadow-md transform hover:-translate-y-0.5 active:scale-95 transition-all">Add Staff Member</button></div>
+                        </form>
+                    </div>
+                    <div class="glass-panel rounded-3xl shadow-glass-md overflow-hidden"><table class="min-w-full text-left"><thead class="bg-slate-50 text-[11px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200/60"><tr><th class="px-8 py-5">ID</th><th class="px-8 py-5">Username</th><th class="px-8 py-5">Password</th><th class="px-8 py-5">Role</th></tr></thead><tbody class="divide-y divide-slate-100 text-sm font-medium text-slate-600 bg-white/40" id="staffTableBody"></tbody></table></div>
+                </div>
+
+                <div id="view-clients" class="view-section space-y-8">
+                    <div class="glass-panel rounded-3xl shadow-glass-md overflow-hidden">
+                        <div class="px-8 py-6 border-b border-slate-200/50 bg-white/40"><h3 class="text-lg font-extrabold text-[#243242]">Add New Client</h3></div>
+                        <form id="clientForm" class="p-8 space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Client Type</label><select id="client_type" class="w-full px-5 py-3.5 glass-input bg-white text-slate-800 rounded-2xl outline-none"><option value="CORPORATE">Corporate</option><option value="MUNICIPALITY">Municipality</option><option value="INDIVIDUAL">Individual</option></select></div>
+                                <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Company Name</label><input type="text" id="name" required class="w-full px-5 py-3.5 glass-input rounded-2xl text-slate-800 outline-none"></div>
+                            </div>
+                            <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">GSTIN / Tax ID</label><input type="text" id="gst_number" class="w-full px-5 py-3.5 glass-input rounded-2xl text-slate-800 outline-none"></div>
+                            <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Address</label><textarea id="address" rows="3" required class="w-full px-5 py-3.5 glass-input rounded-2xl text-slate-800 outline-none"></textarea></div>
+                            <div class="pt-4"><button type="submit" class="w-full bg-[#28a745] hover:bg-[#218838] text-white font-bold py-4 rounded-2xl shadow-md transform hover:-translate-y-0.5 active:scale-95 transition-all">Save Client</button></div>
+                        </form>
+                    </div>
+                    <div class="glass-panel rounded-3xl shadow-glass-md overflow-hidden"><table class="min-w-full text-left"><thead class="bg-slate-50 text-[11px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200/60"><tr><th class="px-8 py-5">ID</th><th class="px-8 py-5">Client Name</th><th class="px-8 py-5">GSTIN</th></tr></thead><tbody class="divide-y divide-slate-100 text-sm font-medium text-slate-600 bg-white/40" id="clientTableBody"></tbody></table></div>
+                </div>
+
+                <div id="view-pickups" class="view-section space-y-8">
+                    <div class="glass-panel rounded-3xl shadow-glass-md overflow-hidden">
+                        <div class="px-8 py-6 bg-white/40 text-[#243242] border-b border-slate-200/50"><h3 class="text-lg font-bold">Schedule a Pickup</h3></div>
+                        <form id="pickupForm" class="p-8 space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Select Client</label><select id="pickup_client_id" required class="w-full px-5 py-3.5 glass-input bg-white text-slate-800 rounded-2xl outline-none"></select></div>
+                                <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Estimated Weight (kg)</label><input type="number" id="pickup_weight" step="0.1" required class="w-full px-5 py-3.5 glass-input rounded-2xl text-slate-800 outline-none"></div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Date</label><input type="date" id="pickup_date" required class="w-full px-5 py-3.5 glass-input rounded-2xl text-slate-800 outline-none"></div>
+                                <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Assign Driver</label><select id="pickup_driver" required class="w-full px-5 py-3.5 glass-input bg-white text-slate-800 rounded-2xl outline-none"></select></div>
+                            </div>
+                            <div class="pt-4"><button type="submit" class="w-full bg-[#28a745] hover:bg-[#218838] text-white font-bold py-4 rounded-2xl shadow-md transform hover:-translate-y-0.5 active:scale-95 transition-all">Schedule Pickup</button></div>
+                        </form>
+                    </div>
+
+                    <div class="glass-panel rounded-3xl shadow-glass-md overflow-hidden">
+                        <div class="px-8 py-6 border-b border-slate-200/50 bg-white/40"><h3 class="text-lg font-extrabold text-[#243242]">Log Arrival Weight (Weighbridge)</h3></div>
+                        <form id="arrivalForm" class="p-8 space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Select Pickup Route</label><select id="arrival_task_id" required class="w-full px-5 py-3.5 glass-input bg-white text-slate-800 rounded-2xl outline-none"></select></div>
+                                <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Actual Weight Arrived (kg)</label><input type="number" id="arrival_weight" step="0.01" required class="w-full px-5 py-3.5 glass-input rounded-2xl text-slate-800 outline-none"></div>
+                            </div>
+                            <div class="pt-4"><button type="submit" class="w-full bg-[#28a745] hover:bg-[#218838] text-white font-bold py-4 rounded-2xl shadow-md transform hover:-translate-y-0.5 active:scale-95 transition-all">Confirm Arrival</button></div>
+                        </form>
+                    </div>
+
+                    <div class="glass-panel rounded-3xl shadow-glass-md overflow-hidden"><table class="min-w-full text-left"><thead class="bg-slate-50 text-[11px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200/60"><tr><th class="px-8 py-5">Task ID</th><th class="px-8 py-5">Client</th><th class="px-8 py-5">Driver</th><th class="px-8 py-5">Expected</th><th class="px-8 py-5">Actual Arrived</th><th class="px-8 py-5">Status</th></tr></thead><tbody class="divide-y divide-slate-100 text-sm font-medium text-slate-600 bg-white/40" id="pickupTableBody"></tbody></table></div>
+                </div>
+
+                <div id="view-warehouse" class="view-section space-y-8">
+                    <div class="glass-panel rounded-3xl shadow-glass-md overflow-hidden">
+                        <div class="px-8 py-6 bg-gradient-to-r from-[#e6f4ea] to-[#f4fbf7] border-b border-emerald-100 text-[#243242]"><h3 class="text-lg font-bold">Generate Recycling Certificate</h3></div>
+                        <form id="certForm" class="p-8 space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Select Client</label><select id="cert_client_id" required class="w-full px-5 py-3.5 glass-input bg-white text-slate-800 rounded-2xl outline-none"></select></div>
+                                <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Select Completed Batch</label><select id="cert_batch_id" required class="w-full px-5 py-3.5 glass-input bg-white text-slate-800 rounded-2xl outline-none"></select></div>
+                            </div>
+                            <div class="pt-4"><button type="submit" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-4 rounded-2xl shadow-md transform hover:-translate-y-0.5 active:scale-95 transition-all">Generate Certificate</button></div>
+                        </form>
+                    </div>
+
+                    <div class="glass-panel rounded-3xl shadow-glass-md overflow-hidden">
+                        <div class="px-8 py-6 bg-slate-50 border-b border-slate-200/60 text-[#243242]">
+                            <h3 class="text-lg font-bold">Export Data</h3>
+                        </div>
+                        <div class="p-8">
+                            <button onclick="window.location.href='/api/export/sales'" class="w-full bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 font-bold py-4 rounded-2xl shadow-sm transform hover:-translate-y-0.5 active:scale-95 transition-all flex justify-center items-center gap-3">
+                                📊 Download Full Audit Report (.CSV)
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="glass-panel rounded-3xl shadow-glass-md overflow-hidden"><div class="px-8 py-6 border-b border-slate-200/50 bg-white/40"><h3 class="text-lg font-extrabold text-[#243242]">Inventory Batches Tracker</h3></div><div class="overflow-x-auto"><table class="min-w-full text-left"><thead class="bg-slate-50 text-[11px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200/60"><tr><th class="px-8 py-5">Batch ID</th><th class="px-8 py-5">Total Weight</th><th class="px-8 py-5">Remaining Untouched</th><th class="px-8 py-5">QR Code</th><th class="px-8 py-5">Status</th><th class="px-8 py-5">Actions</th></tr></thead><tbody class="divide-y divide-slate-100 text-sm font-medium text-slate-600 bg-white/40" id="inventoryTableBody"></tbody></table></div></div>
+                </div>
+
+                <div id="view-jobs" class="view-section space-y-8">
+                    <div class="glass-panel rounded-3xl shadow-glass-md overflow-hidden">
+                        <div class="px-8 py-6 border-b border-slate-200/50 bg-white/40"><h3 class="text-lg font-extrabold text-[#243242]">Assign a Job to Worker</h3></div>
+                        <form id="jobForm" class="p-8 space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Select Batch</label><select id="job_batch_id" required class="w-full px-5 py-3.5 glass-input bg-white text-slate-800 rounded-2xl outline-none"></select></div>
+                                <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Select Worker</label><select id="job_worker" required class="w-full px-5 py-3.5 glass-input bg-white text-slate-800 rounded-2xl outline-none"></select></div>
+                            </div>
+                            <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Instructions</label><textarea id="job_instructions" rows="3" required class="w-full px-5 py-3.5 glass-input rounded-2xl text-slate-800 outline-none"></textarea></div>
+                            <div class="pt-4"><button type="submit" class="w-full bg-[#28a745] hover:bg-[#218838] text-white font-bold py-4 rounded-2xl shadow-md transform hover:-translate-y-0.5 active:scale-95 transition-all">Assign Job</button></div>
+                        </form>
+                    </div>
+                    <div class="glass-panel rounded-3xl shadow-glass-md overflow-hidden"><table class="min-w-full text-left"><thead class="bg-slate-50 text-[11px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200/60"><tr><th class="px-8 py-5">Job ID</th><th class="px-8 py-5">Batch</th><th class="px-8 py-5">Worker</th><th class="px-8 py-5">Instructions</th><th class="px-8 py-5">Status</th></tr></thead><tbody class="divide-y divide-slate-100 text-sm font-medium text-slate-600 bg-white/40" id="jobTableBody"></tbody></table></div>
+                </div>
+
+                <div id="view-sales" class="view-section space-y-8">
+                    <div class="glass-panel rounded-3xl shadow-glass-md border border-orange-200 overflow-hidden">
+                        <div class="px-8 py-6 bg-gradient-to-r from-[#fff7ed] to-[#ffedd5] border-b border-orange-200 text-[#c2410c]"><h3 class="text-lg font-bold flex items-center gap-2">☣️ Dispose Hazardous Material</h3></div>
+                        <form id="disposalForm" class="p-8 space-y-6">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Select Material</label><select id="disposal_material" required class="w-full px-5 py-3.5 glass-input bg-white text-slate-800 rounded-2xl outline-none"></select></div>
+                                <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Weight to Dispose (kg)</label><input type="number" id="disposal_weight" step="0.1" required class="w-full px-5 py-3.5 glass-input rounded-2xl text-slate-800 outline-none"></div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Disposal Facility Name</label><input type="text" id="disposal_facility" required class="w-full px-5 py-3.5 glass-input rounded-2xl text-slate-800 outline-none"></div>
+                                <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Assign Driver</label><select id="disposal_driver_select" required class="w-full px-5 py-3.5 glass-input bg-white text-slate-800 rounded-2xl outline-none"></select></div>
+                            </div>
+                            <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Total Disposal Cost (₹)</label><input type="number" id="disposal_cost" required class="w-full px-5 py-3.5 glass-input rounded-2xl text-slate-800 outline-none"></div>
+                            <div class="pt-4"><button type="submit" class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 rounded-2xl shadow-md transform hover:-translate-y-0.5 active:scale-95 transition-all">Submit Disposal Record</button></div>
+                        </form>
+                    </div>
+
+                    <div class="glass-panel rounded-3xl shadow-glass-md overflow-hidden"><div class="px-8 py-6 bg-[#fffbeb] border-b border-amber-200 text-[#b45309]"><h3 class="text-lg font-bold">Pending Buyer Orders</h3></div><div class="overflow-x-auto"><table class="min-w-full text-left"><thead class="bg-slate-50 text-[11px] font-black text-amber-700 uppercase tracking-widest border-b border-slate-200/60"><tr><th class="px-8 py-5">Order ID</th><th class="px-8 py-5">Buyer</th><th class="px-8 py-5">Material</th><th class="px-8 py-5">Weight (kg)</th><th class="px-8 py-5">Offered Price</th><th class="px-8 py-5">Actions</th></tr></thead><tbody class="divide-y divide-slate-100 text-sm font-medium text-slate-600 bg-white/40" id="pendingOrdersTableBody"></tbody></table></div></div>
+                    
+                    <div class="glass-panel rounded-3xl shadow-glass-md overflow-hidden"><div class="px-8 py-6 border-b border-slate-200/50 bg-white/40"><h3 class="text-lg font-extrabold text-[#243242]">All Sales & Disposals</h3></div><div class="overflow-x-auto"><table class="min-w-full text-left"><thead class="bg-slate-50 text-[11px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200/60"><tr><th class="px-8 py-5">ID</th><th class="px-8 py-5">Buyer / Facility</th><th class="px-8 py-5">Material</th><th class="px-8 py-5">Weight Sold</th><th class="px-8 py-5">Total Price/Cost</th><th class="px-8 py-5">Status</th></tr></thead><tbody class="divide-y divide-slate-100 text-sm font-medium text-slate-600 bg-white/40" id="salesTableBody"></tbody></table></div></div>
+                </div>
+
+                <div id="view-buyer-app" class="view-section mx-auto space-y-8">
+                    <div class="grid grid-cols-1 xl:grid-cols-3 gap-8">
+                        <div class="xl:col-span-1 space-y-8">
+                            <div class="glass-panel rounded-3xl shadow-glass-md overflow-hidden">
+                                <div class="bg-slate-50 border-b border-slate-200/60 text-[#243242] px-8 py-6 font-bold text-lg tracking-wide">Available Market Materials</div>
+                                <table class="min-w-full"><tbody id="liveInventoryTable" class="divide-y divide-slate-100 text-sm font-semibold text-slate-600 bg-white/40"></tbody></table>
+                            </div>
+                            <div class="glass-panel p-8 rounded-3xl shadow-glass-md hover:shadow-xl transition-all duration-300">
+                                <h3 class="font-extrabold text-[#243242] text-lg mb-6">Place an Order</h3>
+                                <form id="buyerOrderForm" class="space-y-6">
+                                    <div><label class="block text-xs font-bold text-slate-500 uppercase mb-2">Select Material</label><select id="buyer_material" required class="w-full px-5 py-3.5 glass-input bg-white text-slate-800 rounded-2xl outline-none"></select></div>
+                                    <div><label class="block text-xs font-bold text-slate-500 uppercase mb-2">Weight Requested (kg)</label><input type="number" id="buyer_qty" step="0.1" required class="w-full px-5 py-3.5 glass-input rounded-2xl text-slate-800 outline-none"></div>
+                                    <div><label class="block text-xs font-bold text-slate-500 uppercase mb-2">Your Price Offer (₹)</label><input type="number" id="buyer_price" required class="w-full px-5 py-3.5 glass-input rounded-2xl text-slate-800 outline-none"></div>
+                                    <button type="submit" class="w-full bg-[#1d6fdc] hover:bg-[#1557b0] text-white font-bold py-4 rounded-2xl shadow-md transform hover:-translate-y-0.5 active:scale-95 transition-all mt-2">Submit Order</button>
+                                </form>
+                            </div>
+                        </div>
+                        <div class="xl:col-span-2">
+                            <div class="glass-panel rounded-3xl shadow-glass-md overflow-hidden">
+                                <div class="bg-slate-50 px-8 py-6 border-b border-slate-200/60"><h3 class="font-extrabold text-[#243242] text-lg">My Orders</h3></div>
+                                <table class="min-w-full text-left text-sm font-medium">
+                                    <thead class="bg-white/40 text-[11px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200/60"><tr><th class="px-8 py-5">Order ID</th><th class="px-8 py-5">Material</th><th class="px-8 py-5">Weight</th><th class="px-8 py-5">Offered Price</th><th class="px-8 py-5">Status</th></tr></thead>
+                                    <tbody class="divide-y divide-slate-100 text-slate-600 bg-white/40" id="buyerOrderTable"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="view-driver-app" class="view-section max-w-4xl mx-auto space-y-8">
+                    <div id="driverAppCards" class="space-y-8"></div>
+                </div>
+
+                <div id="view-worker-app" class="view-section mx-auto space-y-8">
+                    <div class="grid grid-cols-1 xl:grid-cols-12 gap-8">
+                        <div id="workerAppCards" class="xl:col-span-7 space-y-8"></div>
+                        <div class="xl:col-span-5">
+                            <div class="glass-panel rounded-3xl shadow-glass-md overflow-hidden">
+                                <div class="bg-slate-50 px-8 py-6 border-b border-slate-200/60"><h3 class="font-extrabold text-[#243242] text-lg">My Extraction History</h3></div>
+                                <table class="min-w-full text-left text-sm font-medium">
+                                    <thead class="bg-white/40 text-[11px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-200/60"><tr><th class="px-6 py-5">Log ID</th><th class="px-6 py-5">Batch</th><th class="px-6 py-5">Material</th><th class="px-6 py-5">Weight</th></tr></thead>
+                                    <tbody class="divide-y divide-slate-100 text-slate-600 bg-white/40" id="workerExtractionsTableBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <div id="certModal" class="hidden fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center z-50 p-4 transition-all duration-300">
+        <div class="glass-panel rounded-3xl p-10 max-w-xl w-full shadow-glass-lg relative transform scale-95 transition-transform duration-300 bg-white" id="certModalContent">
+            
+            <button onclick="closeModal()" class="absolute -top-4 -right-4 w-12 h-12 bg-white hover:bg-red-50 text-slate-400 hover:text-red-500 rounded-full flex items-center justify-center text-3xl font-bold transition-all hover:rotate-90 shadow-[0_4px_20px_rgba(0,0,0,0.15)] border border-slate-100 z-50">&times;</button>
+            
+            <div class="text-center mb-8">
+                <div class="w-20 h-20 bg-emerald-50 text-[#28a745] rounded-full flex items-center justify-center text-4xl mx-auto mb-4 border border-emerald-200">🏆</div>
+                <h2 class="text-2xl font-extrabold text-[#243242]">Certificate Generated</h2>
+                <p class="text-sm text-slate-500 mt-2">The recycling certificate was created successfully.</p>
+            </div>
+            <div class="bg-slate-50 rounded-2xl p-6 border border-slate-200/60 text-sm font-medium text-slate-700 space-y-4 mb-8 shadow-inner">
+                <div class="flex justify-between border-b border-slate-200 pb-3"><span class="text-slate-400">Batch Number:</span> <strong class="text-[#243242] font-extrabold" id="displayBatch"></strong></div>
+                <div class="flex justify-between border-b border-slate-200 pb-3"><span class="text-slate-400">Client Name:</span> <strong class="text-[#243242] font-extrabold" id="displayClientName"></strong></div>
+                <div class="flex justify-between border-b border-slate-200 pb-3"><span class="text-slate-400">Worker/Engineer:</span> <strong class="text-[#243242] font-extrabold" id="displayWorkerName"></strong></div>
+                <div><span class="text-slate-400 block mb-2 text-xs uppercase font-bold tracking-wider">Security Hash Code:</span> <code class="text-xs bg-white border border-slate-200 p-4 rounded-xl block break-all text-[#28a745] font-mono font-bold shadow-sm" id="displayHash"></code></div>
+            </div>
+            <button id="downloadPdfBtn" class="w-full bg-slate-800 hover:bg-slate-900 text-white font-bold py-4 rounded-2xl shadow-md transform hover:-translate-y-0.5 active:scale-95 transition-all">Download Certificate PDF</button>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('dateDisplay').innerText = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+
+        function closeModal() {
+            const el = document.getElementById('certModalContent');
+            el.classList.remove('scale-100'); el.classList.add('scale-95');
+            setTimeout(() => document.getElementById('certModal').style.display = 'none', 150);
+        }
+
+        // AUTHENTICATED FETCH HELPER WITH BEARER TOKEN
+        async function authFetch(url, options = {}) {
+            const session = JSON.parse(localStorage.getItem("ewaste_session"));
+            options.headers = options.headers || {};
+            if (session && session.token) {
+                options.headers["Authorization"] = `Bearer ${session.token}`;
+            }
+            return fetch(url, options);
+        }
+
+        let currentUser = null, currentRole = null, currentBuyerId = null;
+        let globalClients = [];
+        let trackerExtId = 0, trackerSalesId = 0, trackerPickupState = "", trackerDisposalState = "";
+
+        function instantToast(msg, isError = false) {
+            const container = document.getElementById('toast-container');
+            const toastId = 'toast-' + Date.now();
+            
+            const t = document.createElement('div');
+            t.id = toastId;
+            t.className = `relative overflow-hidden p-4 rounded-2xl shadow-glass-lg font-bold text-sm flex items-center gap-4 w-full pointer-events-auto bg-white/95 border backdrop-blur-xl text-slate-800 toast-animate-in ${
+                isError ? 'border-red-400 shadow-glow-red' : 'border-[#28a745]/60 shadow-glow-green'
+            }`;
+            
+            const iconHtml = isError 
+                ? `<div class="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-xl shadow-inner flex-shrink-0">✖</div>` 
+                : `<div class="w-10 h-10 rounded-full bg-emerald-100 text-[#28a745] flex items-center justify-center text-xl shadow-inner flex-shrink-0">✔</div>`;
+
+            t.innerHTML = `
+                ${iconHtml}
+                <div class="flex-1 tracking-wide z-10 leading-snug">${msg}</div>
+                <button onclick="removeToast('${toastId}')" class="text-slate-400 hover:text-slate-700 z-10 text-lg">&times;</button>
+                <div class="absolute bottom-0 left-0 h-1.5 ${isError ? 'bg-red-500' : 'bg-[#28a745]'} z-0" style="animation: toastProgress 4s linear forwards;"></div>
+            `;
+            
+            container.appendChild(t);
+            setTimeout(() => { removeToast(toastId); }, 4000);
+        }
+
+        function removeToast(id) {
+            const el = document.getElementById(id);
+            if (el && !el.classList.contains('toast-animate-out')) {
+                el.classList.remove('toast-animate-in');
+                el.classList.add('toast-animate-out');
+                setTimeout(() => { if (el.parentNode) el.parentNode.removeChild(el); }, 400);
+            }
+        }
+        
+        function queueToast(msg) { instantToast(msg, false); }
+
+        function showForm(formType) {
+            ['portalSelector', 'staffLoginForm', 'buyerLoginForm', 'buyerRegisterForm'].forEach(id => {
+                const el = document.getElementById(id); el.classList.add('hidden'); el.classList.remove('scale-100'); el.classList.add('scale-95');
+            });
+            let targetId = '';
+            if (formType === 'selector') targetId = 'portalSelector';
+            if (formType === 'staffForm') targetId = 'staffLoginForm';
+            if (formType === 'buyerForm') targetId = 'buyerLoginForm';
+            if (formType === 'registerForm') targetId = 'buyerRegisterForm';
+            
+            const target = document.getElementById(targetId);
+            target.classList.remove('hidden');
+            setTimeout(() => { target.classList.remove('scale-95'); target.classList.add('scale-100'); }, 10);
+        }
+
+        window.onload = function() {
+            const session = JSON.parse(localStorage.getItem("ewaste_session"));
+            const trackers = JSON.parse(localStorage.getItem("admin_trackers")) || {extId:0, salesId:0, pickupState:"", disposalState:""};
+            trackerExtId = trackers.extId; trackerSalesId = trackers.salesId; trackerPickupState = trackers.pickupState; trackerDisposalState = trackers.disposalState;
+
+            if (session && session.username) {
+                currentUser = session.username; currentRole = session.role; currentBuyerId = session.buyerId;
+                activatePortal();
+                pollAdminOfflineMisses();
+            }
+        };
+
+        function activatePortal() {
+            document.getElementById('authContainer').classList.add('hidden');
+            document.getElementById('appContainer').classList.remove('hidden');
+            document.getElementById('currentUserDisplay').innerText = `User: ${currentUser} [${currentRole.toUpperCase()}]`;
+            
+            document.getElementById('welcomeName').innerText = currentUser;
+            let subtitle = "Here's a quick overview of today's operations.";
+            if(currentRole === 'worker') subtitle = "Here are your assigned processing jobs and extractions.";
+            if(currentRole === 'driver') subtitle = "Here are your assigned logistics routes for today.";
+            if(currentRole === 'buyer') subtitle = "Welcome to the marketplace! Browse available materials below.";
+            document.getElementById('welcomeSubtitle').innerText = subtitle;
+
+            if(currentRole === 'admin') { document.getElementById('admin-menu').classList.remove('hidden'); switchTab('overview'); setInterval(pollAdminLive, 5000); }
+            else if(currentRole === 'worker') { document.getElementById('worker-menu').classList.remove('hidden'); switchTab('worker-app'); }
+            else if(currentRole === 'driver') { document.getElementById('driver-menu').classList.remove('hidden'); switchTab('driver-app'); }
+            else if(currentRole === 'buyer') { document.getElementById('buyer-menu').classList.remove('hidden'); switchTab('buyer-app'); }
+        }
+
+        async function handleLogin(usernameId, passwordId) {
+            const res = await fetch("/api/login", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({username: document.getElementById(usernameId).value, password: document.getElementById(passwordId).value}) });
+            if(res.ok) {
+                const data = await res.json();
+                currentUser = document.getElementById(usernameId).value; currentRole = data.role; currentBuyerId = data.buyer_id || null;
+                localStorage.setItem("ewaste_session", JSON.stringify({username: currentUser, role: currentRole, buyerId: currentBuyerId, token: data.access_token}));
+                activatePortal();
+                instantToast("Login Successful! Welcome Back.", false);
+            } else { instantToast("Error: Incorrect username or password", true); }
+        }
+
+        document.getElementById("internalLoginForm").addEventListener("submit", (e) => { e.preventDefault(); handleLogin('internal_username', 'internal_password'); });
+        document.getElementById("externalLoginForm").addEventListener("submit", (e) => { e.preventDefault(); handleLogin('buyer_username', 'buyer_password'); });
+        document.getElementById("publicBuyerForm").addEventListener("submit", async function(e) { e.preventDefault(); const data = { username: document.getElementById("reg_username").value, password: document.getElementById("reg_password").value, company_name: document.getElementById("reg_company").value, license_number: document.getElementById("reg_license").value, contact_email: document.getElementById("reg_email").value }; const res = await fetch("/api/register-public-buyer", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(data) }); if(res.ok) { instantToast("Registration Successful. Please Login."); showForm('buyerForm'); document.getElementById("publicBuyerForm").reset(); } else { const err = await res.json(); instantToast(err.detail || "Error during registration", true); } });
+
+        function logout() { localStorage.removeItem("ewaste_session"); location.reload(); }
+
+        function switchTab(tabName) {
+            const defaultLandingTabs = ['overview', 'buyer-app', 'driver-app', 'worker-app'];
+            if(!defaultLandingTabs.includes(tabName)) {
+                document.getElementById('welcomeSection').classList.add('hidden');
+            } else {
+                document.getElementById('welcomeSection').classList.remove('hidden');
+            }
+
+            document.querySelectorAll('.view-section').forEach(el => { el.classList.remove('active'); });
+            document.querySelectorAll('.sidebar-link').forEach(el => el.classList.remove('active'));
+            
+            const activeLink = document.querySelector(`a[onclick="switchTab('${tabName}')"]`);
+            if(activeLink) activeLink.classList.add('active');
+            
+            document.getElementById('view-' + tabName).classList.add('active');
+            
+            const titles = { 'overview':'Dashboard Overview', 'staff':'Staff Directory', 'clients':'Client Management', 'pickups':'Pickups & Arrivals', 'warehouse':'Warehouse Inventory', 'jobs':'Production Jobs', 'sales':'Sales & Disposal', 'buyer-app':'Buyer Marketplace', 'driver-app':'Driver Route Hub', 'worker-app':'My Jobs Hub' };
+            document.getElementById('topbarTitle').innerText = titles[tabName];
+            
+            if(tabName === 'overview') updateAnalytics();
+            if(tabName === 'staff') fetchStaffList();
+            if(tabName === 'clients') fetchClients();
+            if(tabName === 'pickups') { fetchClients(); fetchPickups(); fetchDriverDropdown(); }
+            if(tabName === 'warehouse') fetchInventory();
+            if(tabName === 'jobs') { fetchInventory(); fetchAdminJobs(); fetchWorkerDropdown(); }
+            if(tabName === 'sales') { fetchClients(); fetchInventory(); fetchAdminSales(); fetchDriverDropdown(); }
+            if(tabName === 'buyer-app') fetchBuyerDashboard();
+            if(tabName === 'driver-app') fetchDriverTasks();
+            if(tabName === 'worker-app') fetchWorkerTasks();
+        }
+
+        async function pollAdminOfflineMisses() {
+            if (currentRole !== 'admin') return;
+            try {
+                const [resExt, resSales, resPick] = await Promise.all([ authFetch("/api/extractions/"), authFetch("/api/sales/"), authFetch("/api/pickups/") ]);
+                const [extData, salesData, pickData] = await Promise.all([ resExt.json(), resSales.json(), resPick.json() ]);
+                
+                const activeDriverTasks = pickData.data.filter(p => p.status !== 'ASSIGNED');
+                const currentPickupState = JSON.stringify(activeDriverTasks.map(p => p.id + p.status));
+                if (trackerPickupState !== "" && currentPickupState !== trackerPickupState) queueToast(`🚚 Alert: Driver updated a pickup status.`);
+                trackerPickupState = currentPickupState;
+
+                const currentDisposalState = JSON.stringify(salesData.data.filter(s => s.status.includes("DISPOSAL") || s.status.includes("TOXIC")).map(s => s.id + s.status));
+                if (trackerDisposalState !== "" && currentDisposalState !== trackerDisposalState) queueToast(`☣️ Notice: Driver updated a disposal status.`);
+                trackerDisposalState = currentDisposalState;
+
+                const allSales = salesData.data;
+                if (allSales.length > 0) {
+                    let latestSaleId = allSales[allSales.length - 1].id;
+                    if (trackerSalesId === 0) trackerSalesId = latestSaleId;
+                    else if (latestSaleId > trackerSalesId) {
+                        allSales.filter(s => s.id > trackerSalesId && s.buyer_id > 0).forEach(o => queueToast(`🛒 Notice: A buyer placed a new order for ${o.material_type}`));
+                        trackerSalesId = latestSaleId;
+                    }
+                }
+
+                const exts = extData.data; 
+                if (exts.length > 0) {
+                    if (trackerExtId === 0) trackerExtId = exts[0].id;
+                    else if (exts[0].id > trackerExtId) {
+                        exts.filter(e => e.id > trackerExtId).reverse().forEach(e => queueToast(`🔔 Notice: ${e.worker_name} logged an extraction: +${e.yield_weight_kg}kg of ${e.material_type}`));
+                        trackerExtId = exts[0].id;
+                    }
+                }
+                localStorage.setItem("admin_trackers", JSON.stringify({extId: trackerExtId, salesId: trackerSalesId, pickupState: trackerPickupState, disposalState: trackerDisposalState}));
+                updateAnalytics(); 
+            } catch(e) {}
+        }
+
+        async function pollAdminLive() {
+            if (currentRole !== 'admin') return;
+            try {
+                const [resExt, resSales, resPick] = await Promise.all([ authFetch("/api/extractions/"), authFetch("/api/sales/"), authFetch("/api/pickups/") ]);
+                const [extData, salesData, pickData] = await Promise.all([ resExt.json(), resSales.json(), resPick.json() ]);
+                let requiresRefresh = false;
+
+                const activeDriverTasks = pickData.data.filter(p => p.status !== 'ASSIGNED');
+                const currentPickupState = JSON.stringify(activeDriverTasks.map(p => p.id + p.status));
+                if (trackerPickupState === "") { trackerPickupState = currentPickupState; }
+                else if (currentPickupState !== trackerPickupState) {
+                    queueToast(`🚚 Alert: Driver updated a pickup status.`);
+                    trackerPickupState = currentPickupState;
+                    if(document.getElementById('view-pickups').classList.contains('active')) fetchPickups();
+                }
+                
+                const currentDisposalState = JSON.stringify(salesData.data.filter(s => s.status.includes("DISPOSAL") || s.status.includes("TOXIC")).map(s => s.id + s.status));
+                if (trackerDisposalState === "") { trackerDisposalState = currentDisposalState; }
+                else if (currentDisposalState !== trackerDisposalState) {
+                    queueToast(`☣️ Notice: Driver updated a disposal status.`);
+                    trackerDisposalState = currentDisposalState;
+                    if(document.getElementById('view-sales').classList.contains('active')) fetchAdminSales();
+                }
+
+                const allSales = salesData.data;
+                if (allSales.length > 0) {
+                    let latestSaleId = allSales[allSales.length - 1].id;
+                    if (trackerSalesId === 0) trackerSalesId = latestSaleId;
+                    else if (latestSaleId > trackerSalesId) {
+                        allSales.filter(s => s.id > trackerSalesId && s.buyer_id > 0).forEach(o => queueToast(`🛒 Notice: New buyer order received for ${o.material_type}`));
+                        trackerSalesId = latestSaleId;
+                        if(document.getElementById('view-sales').classList.contains('active')) fetchAdminSales();
+                        requiresRefresh = true;
+                    }
+                }
+
+                const exts = extData.data; 
+                if (exts.length > 0) {
+                    if (trackerExtId === 0) trackerExtId = exts[0].id;
+                    else if (exts[0].id > trackerExtId) {
+                        exts.filter(e => e.id > trackerExtId).reverse().forEach(e => queueToast(`🔔 Notice: Worker just logged a new extraction.`));
+                        trackerExtId = exts[0].id; requiresRefresh = true;
+                    }
+                }
+                localStorage.setItem("admin_trackers", JSON.stringify({extId: trackerExtId, salesId: trackerSalesId, pickupState: trackerPickupState, disposalState: trackerDisposalState}));
+                if (requiresRefresh && document.getElementById('view-overview').classList.contains('active')) updateAnalytics();
+            } catch(e) {}
+        }
+
+        async function updateAnalytics() {
+            try {
+                const resInventory = await authFetch("/api/inventory/"); const dataInv = await resInventory.json();
+                const resSales = await authFetch("/api/sales/"); const dataSales = await resSales.json();
+                const resJobs = await authFetch("/api/jobs/"); const dataJobs = await resJobs.json();
+                const resLiveInv = await authFetch("/api/live-inventory"); const dataLiveInv = await resLiveInv.json();
+                const resExt = await authFetch("/api/extractions/"); const dataExt = await resExt.json();
+
+                document.getElementById("totalWeightMetric").innerText = `${dataInv.data.reduce((sum, current) => sum + current.actual_arrived_weight, 0).toFixed(2)} kg`;
+                document.getElementById("totalRevenueMetric").innerText = `₹${(dataSales.data.filter(s => s.status === 'APPROVED').reduce((sum, s) => sum + s.total_price, 0) - dataSales.data.filter(s => s.status.includes('DISPOSAL') || s.status.includes('TOXIC')).reduce((sum, s) => sum + s.total_price, 0)).toLocaleString('en-IN')}`;
+                document.getElementById("totalJobsMetric").innerText = dataJobs.data.filter(j => j.status === 'COMPLETED').length;
+                document.getElementById("totalBuyersMetric").innerText = dataSales.data.filter(s => s.status === 'PENDING').length;
+
+                document.getElementById("adminMaterialStock").innerHTML = dataLiveInv.data.map(m => {
+                    const isToxic = m.material.includes("(Toxic)");
+                    const styleClasses = m.available_kg > 0 ? (isToxic ? 'bg-orange-50 border-orange-200 text-orange-800' : 'bg-emerald-50 border-emerald-200 text-[#28a745]') : 'bg-white/40 border-slate-200 text-slate-400';
+                    return `<div class="p-5 rounded-2xl border ${styleClasses} transition-all transform hover:-translate-y-0.5 shadow-sm"><h4 class="text-[10px] font-black uppercase truncate tracking-widest opacity-80">${m.material}</h4><p class="text-2xl font-extrabold mt-2 font-mono">${m.available_kg.toFixed(2)} <span class="text-xs font-medium">kg</span></p></div>`;
+                }).join('');
+
+                document.getElementById("adminExtractionsTable").innerHTML = dataExt.data.map(e => {
+                    const badgeClass = e.material_type.includes('(Toxic)') ? 'text-orange-700 bg-orange-50 border border-orange-200' : 'text-[#28a745] bg-emerald-50 border border-emerald-200';
+                    return `<tr class="hover:bg-white/40 transition-colors"><td class="px-8 py-5 font-mono text-xs text-slate-400">#${e.id}</td><td class="px-8 py-5 font-bold text-slate-700">${e.worker_name}</td><td class="px-8 py-5 text-sm font-medium text-slate-600">Batch #${e.batch_id} <span class="text-slate-400">(${e.client_name})</span></td><td class="px-8 py-5 font-semibold text-slate-700">${e.material_type}</td><td class="px-8 py-5"><span class="px-3 py-1.5 rounded-lg text-xs font-black font-mono tracking-wider ${badgeClass}">+${e.yield_weight_kg} kg</span></td></tr>`;
+                }).join('') || `<tr><td colspan="5" class="px-8 py-6 text-center text-slate-400 font-medium">No extractions recorded yet.</td></tr>`;
+            } catch (error) {}
+        }
+
+        async function fetchStaffList() { 
+            const res = await authFetch("/api/users/"); const result = await res.json(); 
+            document.getElementById("staffTableBody").innerHTML = result.data.filter(u => u.role === 'worker' || u.role === 'driver').map(u => `<tr class="hover:bg-white/40 transition-colors"><td class="px-8 py-5 font-mono text-xs text-slate-400">#${u.id}</td><td class="px-8 py-5 font-extrabold text-slate-700">${u.username}</td><td class="px-8 py-5"><code class="bg-white/80 border border-slate-200 px-3 py-1 rounded-lg text-slate-600 text-xs font-mono font-bold">${u.password}</code></td><td class="px-8 py-5"><span class="bg-blue-50 text-[#1d6fdc] px-3 py-1 rounded-lg text-[10px] uppercase font-black tracking-widest border border-blue-100">${u.role}</span></td></tr>`).join(''); 
+        }
+
+        async function fetchClients() { 
+            const result = await (await authFetch("/api/clients/")).json(); globalClients = result.data; 
+            document.getElementById("clientTableBody").innerHTML = result.data.map(c => `<tr class="hover:bg-white/40 transition-colors"><td class="px-8 py-5 font-mono text-xs text-slate-400">#${c.id}</td><td class="px-8 py-5 font-extrabold text-slate-700">${c.name}</td><td class="px-8 py-5 text-slate-500 font-mono text-sm">${c.gst_number || 'N/A'}</td></tr>`).join(''); 
+            const htmlOptions = result.data.map(c => `<option value="${c.id}">${c.name}</option>`).join(''); 
+            if(document.getElementById("pickup_client_id")) document.getElementById("pickup_client_id").innerHTML = htmlOptions; 
+            if(document.getElementById("cert_client_id")) document.getElementById("cert_client_id").innerHTML = htmlOptions; 
+        }
+
+        async function fetchPickups() { 
+            const result = await (await authFetch("/api/pickups/")).json();
+            document.getElementById("pickupTableBody").innerHTML = result.data.map(p => { 
+                const clientName = globalClients.find(c => c.id === p.client_id)?.name || `Client #${p.client_id}`; 
+                const actualTxt = p.actual_arrived_weight ? `${p.actual_arrived_weight} kg` : `<span class="text-slate-400 italic font-medium">Pending...</span>`;
+                const stateStyle = p.status === 'DELIVERED' ? 'bg-emerald-50 text-[#28a745] border-emerald-200' : 'bg-blue-50 text-[#1d6fdc] border-blue-200';
+                return `<tr class="hover:bg-white/40 transition-colors"><td class="px-8 py-5 font-mono text-xs text-slate-400">#${p.id}</td><td class="px-8 py-5 font-extrabold text-slate-700">${clientName}</td><td class="px-8 py-5 font-semibold text-slate-600">${p.driver_name}</td><td class="px-8 py-5 font-mono text-slate-500">${p.expected_weight_kg} kg</td><td class="px-8 py-5 font-mono font-bold text-slate-700">${actualTxt}</td><td class="px-8 py-5"><span class="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border ${stateStyle}">${p.status}</span></td></tr>`; 
+            }).join(''); 
+            const invResult = await (await authFetch("/api/inventory/")).json();
+            const rawTaskIds = invResult.data.filter(w => w.status === 'RAW').map(w => w.task_id);
+            document.getElementById("arrival_task_id").innerHTML = result.data.filter(p => p.status !== 'DELIVERED' || rawTaskIds.includes(p.id)).map(p => `<option value="${p.id}">Route #${p.id} (Driver: ${p.driver_name})</option>`).join('');
+        }
+
+        async function fetchInventory() { 
+            const result = await (await authFetch("/api/inventory/")).json();
+            document.getElementById("inventoryTableBody").innerHTML = result.data.map(w => {
+                const badgeColor = w.status === 'COMPLETED' ? 'text-[#28a745] bg-emerald-50 border-emerald-200' : (w.status === 'RAW' ? 'text-slate-400 bg-slate-50 border-slate-200' : 'text-amber-700 bg-amber-50 border-amber-200');
+                const actionElement = w.status === 'BEING_DISMANTLED' ? `<button onclick="adminCloseBatch(${w.batch_id})" class="bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-[11px] font-bold px-4 py-2 rounded-xl shadow-sm transform hover:-translate-y-0.5 active:scale-95 transition-all">Mark as Completed</button>` : (w.status === 'COMPLETED' ? '<span class="text-[#28a745] font-extrabold text-sm">Completed</span>' : '<span class="text-slate-400 italic text-sm">Pending</span>');
+                return `<tr class="hover:bg-white/40 transition-colors"><td class="px-8 py-5 text-sm"><span class="font-extrabold text-slate-700 font-mono text-base">#${w.batch_id}</span><br><span class="text-xs font-medium text-slate-400">${w.client_name}</span></td><td class="px-8 py-5 font-mono font-semibold text-slate-600">${w.actual_arrived_weight} kg</td><td class="px-8 py-5 font-bold font-mono text-amber-600">${w.remaining_weight.toFixed(2)} kg</td><td class="px-8 py-5"><img src="data:image/png;base64,${w.qr_code}" class="w-12 h-12 border border-slate-200 rounded-xl shadow-sm transform hover:scale-150 transition-all origin-left opacity-90"></td><td class="px-8 py-5"><span class="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border ${badgeColor}">${w.status.replace('_',' ')}</span></td><td class="px-8 py-5">${actionElement}</td></tr>`;
+            }).join(''); 
+            const assignableBatches = result.data.filter(w => w.status !== 'COMPLETED'); 
+            document.getElementById("job_batch_id").innerHTML = assignableBatches.length ? assignableBatches.map(w => `<option value="${w.batch_id}">Batch #${w.batch_id} - ${w.client_name} (${w.actual_arrived_weight}kg)</option>`).join('') : `<option disabled selected>No active batches available</option>`;
+            if(document.getElementById("cert_batch_id")) document.getElementById("cert_batch_id").innerHTML = result.data.filter(w => w.status === 'COMPLETED').map(w => `<option value="${w.batch_id}">Batch #${w.batch_id} (${w.client_name})</option>`).join('');
+        }
+
+        async function adminCloseBatch(batchId) { await authFetch(`/api/inventory/${batchId}/close`, { method: "POST" }); fetchInventory(); instantToast(`Batch #${batchId} Marked as Completed`); }
+
+        async function fetchAdminJobs() { 
+            const result = await (await authFetch("/api/jobs/")).json(); 
+            document.getElementById("jobTableBody").innerHTML = result.data.map(j => `<tr class="hover:bg-white/40 transition-colors"><td class="px-8 py-5 font-mono text-xs text-slate-400">#${j.id}</td><td class="px-8 py-5 text-sm"><span class="font-extrabold text-slate-700 font-mono">#${j.batch_id}</span><br><span class="text-xs font-medium text-slate-400">${j.client_name}</span></td><td class="px-8 py-5 font-bold text-slate-600">${j.worker_name}</td><td class="px-8 py-5 text-sm font-medium text-slate-500 italic max-w-xs truncate">${j.instructions}</td><td class="px-8 py-5"><span class="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border ${j.status==='COMPLETED'?'bg-emerald-50 text-[#28a745] border-emerald-200':'bg-amber-50 text-amber-600 border-amber-200'}">${j.status.replace('_',' ')}</span></td></tr>`).join(''); 
+        }
+
+        async function fetchAdminSales() {
+            const res = await authFetch("/api/sales/"); const result = await res.json();
+            document.getElementById("pendingOrdersTableBody").innerHTML = result.data.filter(s => s.status === 'PENDING').map(s => `<tr class="hover:bg-white/40 transition-colors"><td class="px-8 py-5 font-mono text-sm text-amber-600 font-black">#${s.id}</td><td class="px-8 py-5 font-extrabold text-slate-700">${s.buyer_name} <span class="text-xs font-medium text-slate-400">(ID #${s.buyer_id})</span></td><td class="px-8 py-5 font-bold text-slate-600">${s.material_type}</td><td class="px-8 py-5 font-mono font-semibold text-slate-500">${s.quantity_sold_kg} kg</td><td class="px-8 py-5 font-black font-mono text-[#28a745] text-base">₹${s.total_price}</td><td class="px-8 py-5"><button onclick="approveOrder(${s.id})" class="bg-[#28a745] hover:bg-[#218838] text-white px-4 py-2 rounded-xl text-xs font-bold mr-2 transform hover:-translate-y-0.5 active:scale-95 transition-all">Approve</button><button onclick="rejectOrder(${s.id})" class="bg-slate-200 hover:bg-slate-300 text-slate-700 px-4 py-2 rounded-xl text-xs font-bold transform hover:-translate-y-0.5 active:scale-95 transition-all border border-slate-300">Reject</button></td></tr>`).join('');
+            document.getElementById("salesTableBody").innerHTML = result.data.filter(s => s.status !== 'PENDING').map(s => {
+                const isDisposal = s.status.includes('DISPOSAL') || s.status.includes('TOXIC');
+                const costOrPrice = isDisposal ? `<span class="text-orange-600 font-extrabold font-mono">-₹${s.total_price}</span>` : `<span class="font-mono font-bold text-[#28a745]">₹${s.total_price}</span>`;
+                const invoicePrintAction = (s.status === 'APPROVED') ? `<button onclick="window.location.href='/api/export/invoice/${s.id}'" class="bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 text-xs px-3 py-1.5 rounded-xl ml-3 transform hover:-translate-y-0.5 active:scale-95 transition-all font-bold shadow-sm">📄 Invoice</button>` : '';
+                return `<tr class="hover:bg-white/40 transition-colors"><td class="px-8 py-5 font-mono text-xs text-slate-400">#${s.id}</td><td class="px-8 py-5 font-extrabold text-slate-700">${s.buyer_name}</td><td class="px-8 py-5 font-semibold text-slate-600">${s.material_type}</td><td class="px-8 py-5 font-mono text-slate-500">${s.quantity_sold_kg} kg</td><td class="px-8 py-5">${costOrPrice}</td><td class="px-8 py-5 flex items-center"><span class="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border ${isDisposal ? 'bg-orange-50 text-orange-600 border-orange-200' : (s.status==='REJECTED'?'bg-slate-50 text-slate-400 border-slate-200':'bg-emerald-50 text-[#28a745] border-emerald-200')}">${s.status.replace('_',' ')}</span> ${invoicePrintAction}</td></tr>`;
+            }).join('');
+            const invRes = await authFetch("/api/live-inventory");
+            document.getElementById("disposal_material").innerHTML = `<option value="" disabled selected>Select hazardous material...</option>` + (await invRes.json()).data.filter(i => i.material.includes("(Toxic)")).map(i => `<option value="${i.material}">${i.material} (${i.available_kg.toFixed(2)}kg Available)</option>`).join('');
+        }
+
+        async function fetchWorkerDropdown() { const res = await authFetch("/api/users/?role=worker"); document.getElementById("job_worker").innerHTML = (await res.json()).data.map(u => `<option value="${u.username}">${u.username}</option>`).join(''); }
+        async function fetchDriverDropdown() { 
+            const htmlOptions = (await (await authFetch("/api/users/?role=driver")).json()).data.map(u => `<option value="${u.username}">${u.username}</option>`).join('');
+            if(document.getElementById("pickup_driver")) document.getElementById("pickup_driver").innerHTML = htmlOptions;
+            if(document.getElementById("disposal_driver_select")) document.getElementById("disposal_driver_select").innerHTML = htmlOptions; 
+        }
+
+        document.getElementById("staffForm").addEventListener("submit", async e => { e.preventDefault(); await authFetch("/api/register-employee", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ username: document.getElementById("staff_username").value, password: document.getElementById("staff_password").value, role: document.getElementById("staff_role").value }) }).then(async r=>{if(r.ok){instantToast("Staff Member Added Successfully"); document.getElementById("staffForm").reset(); fetchStaffList();}else{instantToast((await r.json()).detail, true);}}); });
+        document.getElementById("clientForm").addEventListener("submit", async e => { e.preventDefault(); await authFetch("/clients/", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ client_type: document.getElementById("client_type").value, name: document.getElementById("name").value, gst_number: document.getElementById("gst_number").value, address: document.getElementById("address").value }) }).then(()=>{document.getElementById("clientForm").reset(); fetchClients(); instantToast("Client Added Successfully");}); });
+        document.getElementById("pickupForm").addEventListener("submit", async e => { e.preventDefault(); const res = await authFetch("/pickups/", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ client_id: parseInt(document.getElementById("pickup_client_id").value), expected_weight_kg: parseFloat(document.getElementById("pickup_weight").value), pickup_date: document.getElementById("pickup_date").value, driver_name: document.getElementById("pickup_driver").value }) }); if(res.ok) { document.getElementById("pickupForm").reset(); fetchPickups(); instantToast("Pickup Scheduled Successfully"); } else instantToast((await res.json()).detail, true); });
+        document.getElementById("arrivalForm").addEventListener("submit", async e => { e.preventDefault(); await authFetch("/inbound-waste/", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ task_id: parseInt(document.getElementById("arrival_task_id").value), actual_arrived_weight: parseFloat(document.getElementById("arrival_weight").value) }) }).then(()=>{document.getElementById("arrivalForm").reset(); fetchPickups(); instantToast("Arrival Weight Logged");}); });
+        document.getElementById("jobForm").addEventListener("submit", async e => { e.preventDefault(); await authFetch("/job-cards/", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ batch_id: parseInt(document.getElementById("job_batch_id").value), worker_name: document.getElementById("job_worker").value, instructions: document.getElementById("job_instructions").value }) }).then(()=>{document.getElementById("jobForm").reset(); fetchInventory(); fetchAdminJobs(); instantToast("Job Assigned Successfully");}); });
+        document.getElementById("disposalForm").addEventListener("submit", async e => { e.preventDefault(); const weight = parseFloat(document.getElementById("disposal_weight").value); if(!weight || weight <= 0) { instantToast("Please enter a valid weight", true); return; } const res = await authFetch("/api/disposal-manifest/", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ material_type: document.getElementById("disposal_material").value, quantity_kg: weight, facility_name: document.getElementById("disposal_facility").value, driver_name: document.getElementById("disposal_driver_select").value, disposal_cost: parseFloat(document.getElementById("disposal_cost").value) }) }); if (res.ok) { document.getElementById("disposalForm").reset(); fetchAdminSales(); instantToast("Disposal Record Submitted"); } else { instantToast((await res.json()).detail, true); } });
+        
+        async function approveOrder(orderId) { const res = await authFetch(`/api/approve-order/${orderId}`, { method: "POST" }); if (res.ok) { fetchAdminSales(); instantToast("Order Approved!"); } else instantToast((await res.json()).detail, true); }
+        async function rejectOrder(orderId) { await authFetch(`/api/reject-order/${orderId}`, { method: "POST" }); fetchAdminSales(); instantToast("Order Rejected", true); }
+
+        document.getElementById("certForm").addEventListener("submit", async function(e) {
+            e.preventDefault(); const clientID = document.getElementById("cert_client_id").value; const batchID = document.getElementById("cert_batch_id").value;
+            if (!clientID || !batchID) return;
+            try { const res = await authFetch("/compliance-certificates/", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ client_id: parseInt(clientID), batch_id: parseInt(batchID) }) });
+                if (res.ok) { 
+                    const result = await res.json();
+                    document.getElementById('displayBatch').innerText = batchID; document.getElementById('displayHash').innerText = result.hash; document.getElementById('displayClientName').innerText = result.client_name; document.getElementById('displayWorkerName').innerText = result.worker_name;
+                    document.getElementById('downloadPdfBtn').onclick = function() { window.location.href = `/api/export/certificate?batch_id=${batchID}&client_id=${clientID}&hash_val=${result.hash}&client_name=${encodeURIComponent(result.client_name)}&worker_name=${encodeURIComponent(result.worker_name)}`; };
+                    
+                    const modal = document.getElementById('certModal'); const content = document.getElementById('certModalContent');
+                    modal.style.display = 'flex'; setTimeout(() => { content.classList.remove('scale-95'); content.classList.add('scale-100'); }, 10);
+                    
+                    document.getElementById("certForm").reset(); instantToast("Certificate Generated Successfully!");
+                } else instantToast((await res.json()).detail, true);
+            } catch (error) {}
+        });
+
+        async function fetchBuyerDashboard() {
+            const invData = await (await authFetch("/api/live-inventory")).json();
+            const nonToxicStock = invData.data.filter(i => i.available_kg > 0 && !i.material.includes("(Toxic)"));
+            document.getElementById("liveInventoryTable").innerHTML = nonToxicStock.length ? nonToxicStock.map(i => `<tr class="hover:bg-white/40 transition-colors"><td class="px-8 py-4 font-extrabold border-b border-slate-100 text-slate-700">${i.material}</td><td class="px-8 py-4 text-[#28a745] font-black font-mono border-b border-slate-100 text-right">${i.available_kg.toFixed(2)} kg</td></tr>`).join('') : `<tr><td colspan="2" class="px-8 py-6 text-center text-slate-400 font-bold bg-slate-50">Loading available inventory...</td></tr>`;
+            document.getElementById("buyer_material").innerHTML = `<option value="" disabled selected>Select a material...</option>` + invData.data.map(i => i.material.includes("(Toxic)") ? '' : `<option value="${i.material}" ${i.available_kg>0?'':'disabled'}>${i.material} ${i.available_kg>0 ? `(${i.available_kg.toFixed(2)}kg Available)` : '- OUT OF STOCK'}</option>`).join('');
+            const salesData = await (await authFetch("/api/sales/")).json();
+            document.getElementById("buyerOrderTable").innerHTML = salesData.data.filter(s => s.buyer_id === currentBuyerId).map(s => {
+                const invoicePrintAction = (s.status === 'APPROVED') ? `<button onclick="window.location.href='/api/export/invoice/${s.id}'" class="bg-white text-slate-700 border border-slate-300 hover:bg-slate-50 px-3 py-1.5 rounded-lg shadow-sm text-[10px] font-bold transform hover:-translate-y-0.5 transition-all">📄 Download Invoice</button>` : '';
+                return `<tr class="hover:bg-white/40 transition-colors"><td class="px-8 py-5 font-mono text-xs text-slate-400">#${s.id}</td><td class="px-8 py-5 font-extrabold text-slate-700">${s.material_type}</td><td class="px-8 py-5 font-mono font-semibold text-slate-500">${s.quantity_sold_kg} kg</td><td class="px-8 py-5 font-mono font-black text-[#28a745]">₹${s.total_price}</td><td class="px-8 py-5 flex items-center gap-3"><span class="px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest border ${s.status==='APPROVED'?'bg-emerald-50 text-[#28a745] border-emerald-200':(s.status==='REJECTED'?'bg-red-50 text-red-600 border-red-200':'bg-amber-50 text-amber-700 border-amber-200')}">${s.status}</span> ${invoicePrintAction}</td></tr>`;
+            }).join('');
+        }
+        document.getElementById("buyerOrderForm").addEventListener("submit", async function(e) { e.preventDefault(); const res = await authFetch("/sales-order/", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ buyer_id: currentBuyerId, material_type: document.getElementById("buyer_material").value, quantity_sold_kg: parseFloat(document.getElementById("buyer_qty").value), total_price: parseFloat(document.getElementById("buyer_price").value) }) }); if (res.ok) { document.getElementById("buyerOrderForm").reset(); fetchBuyerDashboard(); instantToast("Order Submitted Successfully!"); } else instantToast((await res.json()).detail, true); });
+
+        async function fetchWorkerTasks() {
+            const result = await (await authFetch("/api/jobs/")).json(); const workerJobs = result.data.filter(j => j.worker_name === currentUser);
+            const activeJobs = workerJobs.filter(j => j.status === 'IN_PROGRESS');
+            if (activeJobs.length > 0) {
+                document.getElementById("workerAppCards").innerHTML = activeJobs.map(j => `
+                    <div class="glass-panel rounded-3xl shadow-glass-md hover:shadow-xl transition-all duration-300 relative overflow-hidden group">
+                        <div class="absolute left-0 top-0 bottom-0 w-2 bg-[#28a745]"></div>
+                        <div class="p-8 pl-10">
+                            <div class="flex justify-between items-center mb-4"><h3 class="text-xl font-extrabold text-slate-800">Job #${j.id} <span class="text-sm text-slate-400 font-medium ml-2">(Batch #${j.batch_id})</span></h3><span class="bg-emerald-50 text-[#28a745] text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border border-emerald-200">In Progress</span></div>
+                            <p class="text-sm text-slate-500 font-bold mb-6">${j.client_name}</p>
+                            
+                            <div class="grid grid-cols-2 gap-4 mb-6">
+                                <div class="bg-white/80 border border-slate-200 p-4 rounded-2xl"><span class="block text-[9px] uppercase font-black text-slate-400 mb-1">Total Batch Weight</span><span class="text-slate-700 font-mono font-bold">${j.batch_initial_weight.toFixed(2)} kg</span></div>
+                                <div class="bg-amber-50/50 border border-amber-200 p-4 rounded-2xl"><span class="block text-[9px] uppercase font-black text-amber-700 mb-1">Remaining Untouched</span><span class="text-amber-700 font-mono font-bold">${j.batch_remaining_weight.toFixed(2)} kg</span></div>
+                            </div>
+                            
+                            <div class="bg-blue-50 text-slate-700 p-5 rounded-2xl text-sm font-medium mb-6"><strong class="text-[#1d6fdc] block mb-1 text-xs uppercase tracking-widest">Instructions:</strong> ${j.instructions}</div>
+                            
+                            <div class="grid grid-cols-2 gap-6 mb-6">
+                                <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Select Material</label><select id="worker_mat_${j.id}" class="w-full px-5 py-3.5 glass-input bg-white text-slate-700 rounded-2xl outline-none font-bold"><option value="Copper">Copper</option><option value="Aluminum">Aluminum</option><option value="Plastic">Plastic</option><option value="Glass">Glass</option><option value="Lithium Batteries (Toxic)">Lithium Batteries (Toxic)</option><option value="Chemical Residue (Toxic)">Chemical Residue (Toxic)</option></select></div>
+                                <div><label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Weight Extracted (kg)</label><input type="number" step="0.01" id="worker_weight_${j.id}" class="w-full px-5 py-3.5 glass-input rounded-2xl text-slate-700 font-mono outline-none"></div>
+                            </div>
+                            <div class="flex gap-4">
+                                <button onclick="workerLogMaterial(${j.id})" class="flex-1 bg-slate-800 hover:bg-slate-900 text-white font-bold py-4 rounded-2xl shadow-sm transform hover:-translate-y-0.5 active:scale-95 transition-all">➕ Log Extraction</button>
+                                <button onclick="workerFinishJob(${j.id})" class="flex-1 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-extrabold py-4 rounded-2xl shadow-lg shadow-emerald-500/30 ring-2 ring-emerald-500/50 transform hover:-translate-y-1 active:scale-95 transition-all">✅ Finish Job</button>
+                            </div>
+                        </div>
+                    </div>`).join('');
+            } else {
+                document.getElementById("workerAppCards").innerHTML = `<div class="glass-panel rounded-3xl p-12 text-center shadow-glass-sm"><div class="text-5xl mb-4 opacity-40">⏳</div><h2 class="text-xl font-extrabold text-slate-700 mb-2">No Active Jobs</h2><p class="text-slate-400 text-sm font-medium">You currently do not have any assigned jobs in progress.</p></div>`;
+            }
+            const extRes = await authFetch("/api/extractions/");
+            document.getElementById("workerExtractionsTableBody").innerHTML = (await extRes.json()).data.filter(e => e.worker_name === currentUser).map(e => `<tr class="hover:bg-white/40 transition-colors"><td class="px-6 py-5 font-mono text-xs text-slate-400">#${e.id}</td><td class="px-6 py-5 font-bold text-slate-700">#${e.batch_id}</td><td class="px-6 py-5 font-semibold text-slate-600">${e.material_type}</td><td class="px-6 py-5 font-extrabold font-mono text-lg ${e.material_type.includes('(Toxic)')?'text-orange-600':'text-[#28a745]'}">+${e.yield_weight_kg}</td></tr>`).join('') || `<tr><td colspan="4" class="text-center p-6 text-slate-400 font-medium">No extractions logged yet.</td></tr>`;
+        }
+        async function workerLogMaterial(jobId) { const matType = document.getElementById(`worker_mat_${jobId}`).value; const weight = parseFloat(document.getElementById(`worker_weight_${jobId}`).value); if(!weight) return instantToast("Please enter a valid weight", true); const res = await authFetch("/extracted-materials/", { method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({ job_id: jobId, material_type: matType, yield_weight_kg: weight }) }); if (res.ok) { document.getElementById(`worker_weight_${jobId}`).value = ""; fetchWorkerTasks(); instantToast(`Logged: ${weight}kg of ${matType}`); } else instantToast((await res.json()).detail, true); }
+        async function workerFinishJob(jobId) { if(confirm("Are you sure you want to finish this job?")) { await authFetch(`/api/jobs/${jobId}/close`, { method: "POST" }); fetchWorkerTasks(); instantToast("Job Finished Successfully."); } }
+
+        async function fetchDriverTasks() {
+            const driverPickups = (await (await authFetch("/api/pickups/")).json()).data.filter(p => p.driver_name === currentUser);
+            const driverDisposals = (await (await authFetch(`/api/driver/disposals/?driver_name=${currentUser}`)).json()).data;
+            let htmlBlocks = driverPickups.map(p => `
+                <div class="glass-panel rounded-3xl shadow-glass-md hover:shadow-xl transition-all duration-300 relative overflow-hidden group">
+                    <div class="absolute left-0 top-0 bottom-0 w-2 bg-[#1d6fdc]"></div>
+                    <div class="p-8 pl-10">
+                        <div class="flex justify-between items-start mb-6"><h3 class="text-xl font-extrabold text-slate-800">Pickup Task #${p.id}</h3><span class="text-xs font-mono font-bold text-slate-500 bg-white/80 px-3 py-1.5 rounded-lg border border-slate-200">Client ID: #${p.client_id}</span></div>
+                        <div class="bg-blue-50 border border-blue-100 p-5 rounded-2xl mb-6 flex justify-between items-center"><span class="text-xs uppercase font-black tracking-widest text-[#1d6fdc]">Expected Weight</span><span class="text-lg font-bold text-slate-700 font-mono">${p.expected_weight_kg} kg</span></div>
+                        <div class="text-xs font-bold text-slate-500 mb-6 flex items-center gap-3">Status: <span class="uppercase font-black tracking-widest text-[10px] px-3 py-1.5 rounded-lg border ${p.status==='DELIVERED'?'bg-emerald-50 text-[#28a745] border-emerald-200':'bg-blue-50 text-[#1d6fdc] border-blue-200'}">${p.status}</span></div>
+                        ${p.status === 'ASSIGNED' ? `<button class="w-full bg-[#1d6fdc] hover:bg-[#1557b0] text-white font-bold py-4 rounded-2xl shadow-md transform hover:-translate-y-0.5 transition-all" onclick="updateDriverStatus(${p.id}, 'EN ROUTE')">Start Pickup Route</button>` : ''}
+                        ${p.status === 'EN ROUTE' ? `<div class="mt-6 pt-6 border-t border-slate-200"><label class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">Enter Actual Weight at Location (kg)</label><input type="number" step="0.01" id="driver_weight_${p.id}" class="w-full px-5 py-4 glass-input rounded-2xl text-slate-800 font-mono text-base outline-none mb-4"><button class="w-full bg-[#28a745] hover:bg-[#218838] text-white font-bold py-4 rounded-2xl shadow-md transform hover:-translate-y-0.5 transition-all" onclick="driverLogWeight(${p.id})">Confirm Dropoff / Arrival</button></div>` : ''}
+                        ${p.status === 'DELIVERED' ? '<div class="text-center font-black text-[#28a745] bg-emerald-50 border border-emerald-200 py-4 rounded-2xl text-xs uppercase tracking-widest">Delivery Completed</div>' : ''}
+                    </div>
+                </div>`).join('');
+            
+            htmlBlocks += driverDisposals.map(d => {
+                const isDelivered = d.status === "DISPOSED", isEnRoute = d.status === "EN_ROUTE_DISP", isAssigned = d.status === "PENDING_DISP";
+                return `
+                <div class="glass-panel rounded-3xl shadow-glass-md border border-orange-200 hover:shadow-xl transition-all duration-300 relative overflow-hidden group">
+                    <div class="absolute left-0 top-0 bottom-0 w-2 bg-orange-600"></div>
+                    <div class="p-8 pl-10">
+                        <div class="flex justify-between items-start mb-6"><h3 class="text-xl font-extrabold text-orange-700">Hazardous Disposal Task #${d.id}</h3><span class="text-xs font-mono font-bold text-orange-600 bg-orange-50 px-3 py-1.5 rounded-lg border border-orange-200 truncate max-w-[200px]">Facility: ${d.facility}</span></div>
+                        <div class="bg-orange-50 border border-orange-100 p-5 rounded-2xl mb-6 flex justify-between items-center"><span class="text-xs uppercase font-black tracking-widest text-orange-600">Load Details</span><span class="text-lg font-bold text-slate-700 font-mono">${d.weight}kg [${d.material_type}]</span></div>
+                        <div class="text-xs font-bold text-slate-500 mb-6 flex items-center gap-3">Status: <span class="uppercase font-black tracking-widest text-[10px] px-3 py-1.5 rounded-lg border ${isDelivered?'bg-emerald-50 text-[#28a745] border-emerald-200':'bg-orange-50 text-orange-600 border-orange-200'}">${isAssigned?'Pending Route':(isEnRoute?'En Route':'Disposed')}</span></div>
+                        ${isAssigned ? `<button class="w-full bg-orange-600 hover:bg-orange-700 text-white font-bold py-4 rounded-2xl shadow-md transform hover:-translate-y-0.5 transition-all" onclick="updateDisposalStatus(${d.id}, 'START')">Start Route</button>` : ''}
+                        ${isEnRoute ? `<button class="w-full bg-[#28a745] hover:bg-[#218838] text-white font-bold py-4 rounded-2xl shadow-md transform hover:-translate-y-0.5 transition-all" onclick="updateDisposalStatus(${d.id}, 'DELIVER')">Confirm Facility Dropoff</button>` : ''}
+                        ${isDelivered ? '<div class="text-center font-black text-[#28a745] bg-emerald-50 border border-emerald-200 py-4 rounded-2xl text-xs uppercase tracking-widest">Disposal Completed</div>' : ''}
+                    </div>
+                </div>`;
+            }).join('');
+            document.getElementById("driverAppCards").innerHTML = htmlBlocks || "<div class='text-center p-12 bg-white/40 border border-slate-200 rounded-3xl text-slate-400 text-sm font-bold shadow-sm'>You currently have no assigned routes.</div>";
+        }
+        async function updateDriverStatus(taskId, newStatus) { await authFetch('/api/driver/update-status', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({task_id: taskId, new_status: newStatus})}).then(() => { fetchDriverTasks(); instantToast(`Status updated to ${newStatus}`); }); }
+        async function driverLogWeight(taskId) { const w = document.getElementById(`driver_weight_${taskId}`).value; if(!w) return instantToast("Please enter a valid weight", true); await authFetch('/inbound-waste/', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({task_id: taskId, actual_arrived_weight: parseFloat(w)}) }); fetchDriverTasks(); instantToast("Weight logged successfully!"); }
+        async function updateDisposalStatus(taskId, action) { await authFetch('/api/driver/disposal-update', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({task_id: taskId, action: action})}).then(() => { fetchDriverTasks(); instantToast(`Status updated successfully.`); }); }
+    </script>
+</body>
+</html>
