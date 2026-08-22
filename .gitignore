@@ -1,0 +1,29 @@
+# Python System Files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual Environments & Secrets (Standard Best Practice)
+venv/
+env/
+.venv/
+.env
+.flaskenv
+
+# Database (CRITICAL: Do not upload test data/passwords)
+*.sqlite
+*.sqlite3
+*.db
+*.db-journal
+
+# Generated PDFs and CSVs
+*.pdf
+*.csv
+
+# OS & Editor Files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
