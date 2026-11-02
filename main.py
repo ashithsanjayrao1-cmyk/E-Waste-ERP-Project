@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from database import engine, get_db
 from typing import Optional
 from fastapi.templating import Jinja2Templates
-from fastapi.responses import HTMLResponse, StreamingResponse
+from fastapi.responses import HTMLResponse, StreamingResponse, RedirectResponse
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.colors import HexColor
@@ -49,7 +49,7 @@ if not os.path.exists("static"):
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory = "templates")
 
-SECRET_KEY = "ewaste_super_secret_master_key"
+SECRET_KEY = os.getenv("SECRET_KEY", "6cea38ce952c917911398eff9a947e7203eb3cd3285e9bfde08f2916f0c89751")
 ALGORITHM = "HS256"
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -832,6 +832,10 @@ def download_invoice(order_id: int, db: Session = Depends(get_db)):
     p.save()
     buffer.seek(0)
     return StreamingResponse(buffer, media_type="application/pdf", headers={"Content-Disposition": f"attachment; filename=Invoice_INV-{order.id:04d}.pdf"})
+
+@app.get("/")
+def redirect_to_dashboard():
+    return RedirectResponse(url="/dashboard")
 
 @app.get("/dashboard", response_class = HTMLResponse)
 async def serve_ui(request: Request):
