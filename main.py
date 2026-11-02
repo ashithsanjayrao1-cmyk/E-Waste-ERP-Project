@@ -43,11 +43,18 @@ def create_qr_base64(data_string: str):
 models.Base.metadata.create_all(bind = engine)
 app = FastAPI(title="E-Waste ERP - Complete System")
 
-if not os.path.exists("static"):
-    os.makedirs("static")
-    
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory = "templates")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+STATIC_DIR = os.path.join(BASE_DIR, "static")
+TEMPLATES_DIR = os.path.join(BASE_DIR, "templates")
+
+if not os.path.exists(STATIC_DIR):
+    try:
+        os.makedirs(STATIC_DIR, exist_ok=True)
+    except Exception:
+        pass
+
+app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+templates = Jinja2Templates(directory=TEMPLATES_DIR)
 
 SECRET_KEY = os.getenv("SECRET_KEY", "6cea38ce952c917911398eff9a947e7203eb3cd3285e9bfde08f2916f0c89751")
 ALGORITHM = "HS256"

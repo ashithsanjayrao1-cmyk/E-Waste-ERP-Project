@@ -1,10 +1,30 @@
 import os
+import shutil
+import tempfile
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, declarative_base
 
-# Read DATABASE_URL from environment variable (for Cloud MySQL / PostgreSQL)
-# Defaults to SQLite for instant, zero-configuration deployment:
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./ewaste.db")
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# Vercel serverless environment has a read-only root directory.
+# Only /tmp (or system temp directory) is writable for SQLite database files.
+if os.getenv("VERCEL"):
+    tmp_dir = tempfile.gettempdir()
+    tmp_db_path = os.path.join(tmp_dir, "ewaste.db")
+    orig_db_path = os.path.join(BASE_DIR, "ewaste.db")
+    # Copy pre-populated database to temp directory if not already there
+    if os.path.exists(orig_db_path) and not os.path.exists(tmp_db_path):
+        try:
+            shutil.copy2(orig_db_path, tmp_db_path)
+        except Exception:
+            pass
+    DEFAULT_DB_URL = f"sqlite:///{tmp_db_path}"
+else:
+    DEFAULT_DB_URL = f"sqlite:///{os.path.join(BASE_DIR, 'ewaste.db')}"
+
+# Read DATABASE_URL from environment variable (for Cloud MySQL / PostgreSQL / Neon)
+# Defaults to SQLite:
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", DEFAULT_DB_URL)
 
 # Handle legacy 'postgres://' URLs from cloud providers
 if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
